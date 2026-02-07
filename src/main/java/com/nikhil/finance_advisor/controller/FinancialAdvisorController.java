@@ -8,8 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:3000")
-public class FinancialAdvisorController {
+@CrossOrigin(origins = "${cors.allowed.origins}")public class FinancialAdvisorController {
     
     @Autowired
     private GeminiService geminiService;
