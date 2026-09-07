@@ -8,8 +8,8 @@ RESTful API backend for SmartMoney, an AI-powered financial advisory platform th
 
 ## Technology Stack
 
-- **Framework:** Spring Boot 3.x
-- **Language:** Java 21
+- **Framework:** Spring Boot 4.0.1
+- **Language:** Java 21 (compiled at source level 17)
 - **Build Tool:** Maven
 - **AI Integration:** Groq API (LLaMA model)
 - **Hosting:** Railway
@@ -21,14 +21,10 @@ RESTful API backend for SmartMoney, an AI-powered financial advisory platform th
 GET /api/health
 ```
 
-Returns the current status and health information of the API.
+Returns a plain-text liveness string (not JSON):
 
-**Response:**
-```json
-{
-  "status": "OK",
-  "message": "Financial Advisor API is running"
-}
+```
+Financial Advisor API is running!
 ```
 
 ### Chat Endpoint
@@ -44,20 +40,38 @@ Generates AI-powered financial advice based on user's financial profile.
 {
   "message": "Should I save or pay off debt first?",
   "financialData": {
-    "monthlyIncome": 5000,
-    "monthlyExpenses": 3500,
-    "currentSavings": 10000,
-    "outstandingDebts": 5000,
-    "financialGoals": "Save for a house"
-  }
+    "monthlyIncome": "5000",
+    "monthlyExpenses": "3500",
+    "savings": "10000",
+    "debts": "5000",
+    "goals": "Save for a house"
+  },
+  "history": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ]
 }
 ```
+
+All `financialData` fields are strings and all are optional — anything omitted is
+sent to the model as "Not provided". `history` is the conversation so far, oldest
+first, and may be omitted or empty.
 
 **Response:**
 ```json
 {
   "response": "Based on your financial situation...",
   "success": true
+}
+```
+
+On failure the endpoint still returns HTTP 200 with a generic message; the cause
+is written to the server log rather than returned to the client:
+```json
+{
+  "response": null,
+  "success": false,
+  "error": "The advisor is temporarily unavailable. Please try again in a moment."
 }
 ```
 
@@ -83,10 +97,11 @@ export GROQ_API_KEY=your_groq_api_key_here
 export FRONTEND_URL=http://localhost:3000
 ```
 
-3. Build the project:
+3. Build and test the project:
 ```bash
-mvn clean install
+mvn clean verify
 ```
+The test suite does not need a real `GROQ_API_KEY`.
 
 4. Run the application:
 ```bash
@@ -102,8 +117,12 @@ The API will be available at `http://localhost:8080`
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
 | `GROQ_API_KEY` | API key for Groq AI service | Yes | - |
-| `FRONTEND_URL` | Frontend application URL for CORS | Yes | `http://localhost:3000` |
+| `FRONTEND_URL` | Frontend application URL for CORS | No | `http://localhost:3000` |
+| `GROQ_MODEL` | Groq model id | No | `llama-3.3-70b-versatile` |
 | `PORT` | Server port | No | `8080` |
+
+`GROQ_API_KEY` has no default on purpose: the application fails to start without
+it, so a misconfigured deploy is caught immediately rather than serving errors.
 
 ### Application Properties
 
@@ -113,27 +132,63 @@ server.port=${PORT:8080}
 spring.application.name=finance-advisor
 groq.api.key=${GROQ_API_KEY}
 cors.allowed.origins=${FRONTEND_URL:http://localhost:3000}
+
+groq.api.model=${GROQ_MODEL:llama-3.3-70b-versatile}
+groq.api.temperature=0.7
+groq.api.max-tokens=1000
+groq.api.connect-timeout-seconds=10
+groq.api.read-timeout-seconds=60
 ```
 
 ## Project Structure
 ```
-src/main/java/com/nikhil/finance_advisor/
-├── config/
-│   └── CorsConfig.java                    # CORS configuration
-├── controller/
-│   └── FinancialAdvisorController.java    # REST API endpoints
-├── model/
-│   ├── ChatRequest.java                   # Request data transfer object
-│   ├── ChatResponse.java                  # Response data transfer object
-│   └── FinancialData.java                 # Financial data model
-├── service/
-│   └── GeminiService.java                 # AI service integration
-└── FinanceAdvisorApplication.java         # Application entry point
+src/main/
+├── java/com/nikhil/finance_advisor/
+│   ├── config/
+│   │   └── RestClientConfig.java          # Shared RestTemplate with timeouts
+│   ├── controller/
+│   │   └── FinancialAdvisorController.java # REST API endpoints
+│   ├── model/
+│   │   ├── ChatMessage.java               # One conversation turn
+│   │   ├── ChatRequest.java               # Request data transfer object
+│   │   ├── ChatResponse.java              # Response data transfer object
+│   │   └── FinancialData.java             # Financial data model
+│   ├── prompt/
+│   │   └── AdvisorPrompt.java             # Loads and fills the system prompt
+│   ├── service/
+│   │   └── AdvisorService.java            # Groq API integration
+│   └── FinanceAdvisorApplication.java     # Application entry point
+└── resources/
+    ├── application.properties
+    └── prompts/
+        └── advisor-system-prompt.v2.md    # The system prompt of record
 ```
+
+## The system prompt
+
+The advisor's behaviour is defined in
+[`src/main/resources/prompts/advisor-system-prompt.v2.md`](src/main/resources/prompts/advisor-system-prompt.v2.md),
+not in Java source, so it can be reviewed as a diff and rolled back on its own.
+`AdvisorPrompt` loads it at startup and substitutes the user's figures.
+
+Its `SAFETY AND SCOPE` section carries the guardrails: educational framing rather
+than licensed advice, escalation to a CFP/CPA/attorney for tax, estate, insurance
+and legal questions, a prohibition on recommending specific securities or
+predicting returns, and a rule against stating figures that cannot be derived from
+what the user supplied. `AdvisorPromptTest` asserts each of these is present, so
+removing one fails the build.
+
+To change the prompt materially, add a new versioned file, bump
+`AdvisorPrompt.PROMPT_VERSION`, and update the tests.
 
 ## API Integration
 
 The backend integrates with Groq's API to process natural language queries and generate contextual financial advice. User financial data is included in prompts to ensure personalized and relevant responses.
+
+Note that the model currently receives only the five raw figures above and does
+its own arithmetic. Moving the calculations into tools the model calls is
+tracked as Phase 2 in the
+[frontend repository's plan](https://github.com/nikhilthota2007/smartmoney-frontend/blob/main/docs/PLAN.md).
 
 ## Related Repositories
 
