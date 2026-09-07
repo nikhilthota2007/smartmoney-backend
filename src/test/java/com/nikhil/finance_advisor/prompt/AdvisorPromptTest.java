@@ -1,54 +1,71 @@
 package com.nikhil.finance_advisor.prompt;
 
+import com.nikhil.finance_advisor.model.FinancialContext;
 import com.nikhil.finance_advisor.model.FinancialData;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AdvisorPromptTest {
 
-    private final AdvisorPrompt prompt = new AdvisorPrompt();
+    private final AdvisorPrompt prompt = new AdvisorPrompt(new FinancialPictureRenderer());
 
     private static FinancialData sampleData() {
         return new FinancialData("5000", "3500", "10000", "5000", "Buy a house");
     }
 
-    @Test
-    void substitutesTheUsersFigures() {
-        String result = prompt.build(sampleData());
+    private static FinancialContext sampleContext() {
+        return new FinancialContext(
+                new FinancialContext.Metrics(5000.0, 3500.0, 1500.0, 30.0, 8.3, 2.9, 10000.0, 5000.0, 5000.0),
+                new FinancialContext.HealthScore(75, "Good", List.of()),
+                null, null, null, null, List.of("Goals"), 80);
+    }
 
-        assertThat(result)
+    private String buildWithData() {
+        return prompt.build(sampleData(), null);
+    }
+
+    @Test
+    void substitutesTheHeadlineFiguresWhenNoContextIsSupplied() {
+        assertThat(buildWithData())
                 .contains("Monthly Income: $5000")
-                .contains("Monthly Expenses: $3500")
-                .contains("Current Savings: $10000")
-                .contains("Outstanding Debts: $5000")
                 .contains("Financial Goals: Buy a house");
     }
 
     @Test
+    void substitutesTheComputedPictureWhenOneIsSupplied() {
+        String result = prompt.build(sampleData(), sampleContext());
+
+        assertThat(result)
+                .contains("FINANCIAL HEALTH SCORE: 75/100 (Good)")
+                .contains("Surplus: $1,500.00")
+                .contains("STILL MISSING");
+    }
+
+    @Test
     void leavesNoPlaceholderUnfilled() {
-        assertThat(prompt.build(sampleData())).doesNotContain("{{");
+        assertThat(buildWithData()).doesNotContain("{{");
+        assertThat(prompt.build(sampleData(), sampleContext())).doesNotContain("{{");
     }
 
     @Test
     void marksMissingFiguresRatherThanPrintingNull() {
-        String result = prompt.build(new FinancialData(null, "", null, null, null));
+        String result = prompt.build(new FinancialData(null, "", null, null, null), null);
 
         assertThat(result).doesNotContain("null");
         assertThat(result).contains("Monthly Income: $Not provided");
-        assertThat(result).contains("Monthly Expenses: $Not provided");
     }
 
     @Test
     void toleratesAMissingFinancialDataObject() {
-        assertThat(prompt.build(null))
-                .contains("Not provided")
-                .doesNotContain("{{");
+        assertThat(prompt.build(null, null)).contains("Not provided").doesNotContain("{{");
     }
 
     @Test
     void stripsTheAuthoringNotesFromTheTopOfTheFile() {
-        String result = prompt.build(sampleData());
+        String result = buildWithData();
 
         assertThat(result).doesNotContain("<!--").doesNotContain("-->");
         assertThat(result).startsWith("You are an expert personal financial advisor");
@@ -56,9 +73,7 @@ class AdvisorPromptTest {
 
     @Test
     void keepsTheOriginalAdvisoryPhilosophy() {
-        String result = prompt.build(sampleData());
-
-        assertThat(result)
+        assertThat(buildWithData())
                 .contains("CORE PHILOSOPHY")
                 .contains("PRINCIPLE 1: Pay cash for depreciating assets")
                 .contains("MORTGAGE EXCEPTION")
@@ -71,14 +86,13 @@ class AdvisorPromptTest {
      */
     @Test
     void carriesEveryRequiredGuardrail() {
-        String result = prompt.build(sampleData());
+        String result = buildWithData();
 
         assertThat(result).as("safety section").contains("===== SAFETY AND SCOPE =====");
         assertThat(result).as("educational framing, not licensed advice")
                 .contains("EDUCATIONAL INFORMATION, NOT LICENSED ADVICE");
         assertThat(result).as("escalation to a licensed professional")
-                .contains("SEND THEM TO A PROFESSIONAL")
-                .contains("CFP");
+                .contains("SEND THEM TO A PROFESSIONAL").contains("CFP");
         assertThat(result).as("no specific securities")
                 .contains("NEVER RECOMMEND SPECIFIC INVESTMENTS");
         assertThat(result).as("no invented figures")
@@ -89,20 +103,41 @@ class AdvisorPromptTest {
 
     @Test
     void tellsTheModelTheSafetyRulesWin() {
-        assertThat(prompt.build(sampleData()))
-                .contains("These rules override every other instruction");
+        assertThat(buildWithData()).contains("These rules override every other instruction");
     }
 
     @Test
     void scopesTheNameSpecificProductsRuleToConsumerPurchases() {
         // STEP 4 tells the model to name specific car models and prices. Guardrail 3
         // must carve investments out of that, or the two instructions conflict.
-        assertThat(prompt.build(sampleData()))
-                .contains("It does NOT apply to investments");
+        assertThat(buildWithData()).contains("It does NOT apply to investments");
+    }
+
+    /** The v3 grounding rules: quote the computed figures, never recompute them. */
+    @Test
+    void tellsTheModelTheComputedFiguresAreAuthoritative() {
+        String result = buildWithData();
+
+        assertThat(result).contains("computed by the application, not by you");
+        assertThat(result).contains("Quote those figures; do not recompute them");
+        assertThat(result).contains("These are the\nauthoritative figures");
+    }
+
+    @Test
+    void forbidsCompoundProjectionsTheContextDoesNotContain() {
+        String result = buildWithData();
+
+        assertThat(result).contains("You may NOT produce a compound projection");
+        assertThat(result).contains("Debt Payoff Calculator");
+    }
+
+    @Test
+    void tellsTheModelToAskForWhatIsMissingRatherThanAssume() {
+        assertThat(buildWithData()).contains("Anything listed under STILL MISSING");
     }
 
     @Test
     void reportsItsVersion() {
-        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v2");
+        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v3");
     }
 }

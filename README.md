@@ -167,9 +167,10 @@ src/main/
 ## The system prompt
 
 The advisor's behaviour is defined in
-[`src/main/resources/prompts/advisor-system-prompt.v2.md`](src/main/resources/prompts/advisor-system-prompt.v2.md),
+[`src/main/resources/prompts/advisor-system-prompt.v3.md`](src/main/resources/prompts/advisor-system-prompt.v3.md),
 not in Java source, so it can be reviewed as a diff and rolled back on its own.
-`AdvisorPrompt` loads it at startup and substitutes the user's figures.
+`AdvisorPrompt` loads it at startup and `FinancialPictureRenderer` substitutes the
+computed financial picture into it.
 
 Its `SAFETY AND SCOPE` section carries the guardrails: educational framing rather
 than licensed advice, escalation to a CFP/CPA/attorney for tax, estate, insurance
@@ -181,13 +182,36 @@ removing one fails the build.
 To change the prompt materially, add a new versioned file, bump
 `AdvisorPrompt.PROMPT_VERSION`, and update the tests.
 
+## The financial picture
+
+`financialContext` on the chat request carries figures the frontend has already
+computed — derived metrics, the health score, per-debt terms, payoff timelines,
+coverage gaps, and a list of what the user has not entered yet. The prompt tells
+the model these are authoritative: quote them, never recompute them, and say so
+plainly when a question needs a calculation that is not present.
+
+Nothing here is recalculated server-side. Duplicating money maths in a second
+language would give two answers that could disagree; the frontend's version is
+covered by characterization tests pinning its output.
+
+`financialContext` is optional. An older client that sends only `financialData`
+still works, and the prompt then tells the model that only the headline figures
+are available.
+
+`src/test/resources/contract/advisor-context.json` is the exact payload the
+frontend emits, checked in on both sides.
+[`AdvisorContextContractTest`](src/test/java/com/nikhil/finance_advisor/prompt/AdvisorContextContractTest.java)
+asserts it binds to our records with nothing dropped — a renamed field would
+otherwise deserialize to null and the model would quietly lose that figure. The
+frontend has the matching test.
+
 ## API Integration
 
 The backend integrates with Groq's API to process natural language queries and generate contextual financial advice. User financial data is included in prompts to ensure personalized and relevant responses.
 
-Note that the model currently receives only the five raw figures above and does
-its own arithmetic. Moving the calculations into tools the model calls is
-tracked as Phase 2 in the
+The model is grounded in the precomputed figures described above rather than
+doing its own arithmetic. Parameterized what-ifs ("what if I pay $500 extra?")
+still need real tool calls, which is the remaining Phase 2 work in the
 [frontend repository's plan](https://github.com/nikhilthota2007/smartmoney-frontend/blob/main/docs/PLAN.md).
 
 ## Related Repositories
