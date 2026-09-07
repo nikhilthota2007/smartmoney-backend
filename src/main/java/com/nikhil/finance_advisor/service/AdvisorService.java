@@ -64,8 +64,9 @@ public class AdvisorService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
 
-        log.debug("Calling Groq: model={} promptVersion={} messages={}",
-                model, AdvisorPrompt.PROMPT_VERSION, messages.size());
+        log.debug("Calling Groq: model={} promptVersion={} messages={} groundedContext={}",
+                model, AdvisorPrompt.PROMPT_VERSION, messages.size(),
+                request.getFinancialContext() != null);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> response =
@@ -76,7 +77,8 @@ public class AdvisorService {
 
     private List<Map<String, String>> buildMessages(ChatRequest request) {
         List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(message("system", advisorPrompt.build(request.getFinancialData())));
+        messages.add(message("system",
+                advisorPrompt.build(request.getFinancialData(), request.getFinancialContext())));
 
         if (request.getHistory() != null) {
             for (ChatMessage msg : request.getHistory()) {

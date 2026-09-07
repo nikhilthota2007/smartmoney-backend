@@ -1,5 +1,6 @@
 package com.nikhil.finance_advisor.prompt;
 
+import com.nikhil.finance_advisor.model.FinancialContext;
 import com.nikhil.finance_advisor.model.FinancialData;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -9,11 +10,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 
 /**
  * Loads the advisor's system prompt from a versioned file on the classpath and
- * fills in the user's figures.
+ * fills in the user's financial picture.
  *
  * The prompt lives in src/main/resources/prompts/ rather than in Java source so
  * it can be reviewed as a diff and rolled back on its own. Bump PROMPT_VERSION
@@ -22,17 +22,19 @@ import java.util.Map;
 @Component
 public class AdvisorPrompt {
 
-    public static final String PROMPT_VERSION = "v2";
+    public static final String PROMPT_VERSION = "v3";
 
     private static final String PROMPT_RESOURCE = "prompts/advisor-system-prompt." + PROMPT_VERSION + ".md";
-    private static final String NOT_PROVIDED = "Not provided";
+    private static final String PICTURE_PLACEHOLDER = "{{financialPicture}}";
 
     /** Everything up to and including this marker is authoring notes, not prompt text. */
     private static final String HEADER_END = "-->";
 
     private final String template;
+    private final FinancialPictureRenderer renderer;
 
-    public AdvisorPrompt() {
+    public AdvisorPrompt(FinancialPictureRenderer renderer) {
+        this.renderer = renderer;
         this.template = loadTemplate();
     }
 
@@ -49,25 +51,8 @@ public class AdvisorPrompt {
         }
     }
 
-    /** The system prompt for this user, with their figures substituted in. */
-    public String build(FinancialData data) {
-        FinancialData safe = data != null ? data : new FinancialData();
-
-        Map<String, String> values = Map.of(
-                "monthlyIncome", orNotProvided(safe.getMonthlyIncome()),
-                "monthlyExpenses", orNotProvided(safe.getMonthlyExpenses()),
-                "savings", orNotProvided(safe.getSavings()),
-                "debts", orNotProvided(safe.getDebts()),
-                "goals", orNotProvided(safe.getGoals()));
-
-        String prompt = template;
-        for (Map.Entry<String, String> entry : values.entrySet()) {
-            prompt = prompt.replace("{{" + entry.getKey() + "}}", entry.getValue());
-        }
-        return prompt;
-    }
-
-    private static String orNotProvided(String value) {
-        return value == null || value.isBlank() ? NOT_PROVIDED : value;
+    /** The system prompt for this request, with the computed picture substituted in. */
+    public String build(FinancialData data, FinancialContext context) {
+        return template.replace(PICTURE_PLACEHOLDER, renderer.render(context, data));
     }
 }

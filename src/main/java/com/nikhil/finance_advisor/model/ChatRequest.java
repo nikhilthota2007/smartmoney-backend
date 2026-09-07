@@ -4,6 +4,8 @@ import java.util.List;
 
 public class ChatRequest {
     private FinancialData financialData;
+    /** The computed picture. Absent from older clients, which send only financialData. */
+    private FinancialContext financialContext;
     private String message;
     private List<ChatMessage> history;
 
@@ -12,6 +14,11 @@ public class ChatRequest {
     public FinancialData getFinancialData() { return financialData; }
     public void setFinancialData(FinancialData financialData) { 
         this.financialData = financialData; 
+    }
+
+    public FinancialContext getFinancialContext() { return financialContext; }
+    public void setFinancialContext(FinancialContext financialContext) {
+        this.financialContext = financialContext;
     }
 
     public String getMessage() { return message; }
