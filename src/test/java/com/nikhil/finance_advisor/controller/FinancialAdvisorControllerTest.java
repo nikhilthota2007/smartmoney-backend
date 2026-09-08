@@ -2,6 +2,7 @@ package com.nikhil.finance_advisor.controller;
 
 import com.nikhil.finance_advisor.model.ToolCall;
 import com.nikhil.finance_advisor.service.AdvisorService;
+import com.nikhil.finance_advisor.service.AdvisorTools;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,6 +29,9 @@ class FinancialAdvisorControllerTest {
 
     @MockitoBean
     private AdvisorService advisorService;
+
+    @MockitoBean
+    private AdvisorTools advisorTools;
 
     private static final String REQUEST_BODY = """
             {
@@ -122,8 +126,27 @@ class FinancialAdvisorControllerTest {
 
     @Test
     void healthEndpointRespondsWithoutTheAdvisor() throws Exception {
+        given(advisorTools.names()).willReturn(List.of("simulate_debt_payoff"));
+
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Financial Advisor API is running!"));
+                .andExpect(content().string(org.hamcrest.Matchers.startsWith("Financial Advisor API is running!")));
+    }
+
+    /**
+     * What makes a deploy verifiable: an older build has no tools, so its health
+     * string cannot name any.
+     */
+    @Test
+    void healthEndpointNamesTheVersionsAndToolsThisBuildCarries() throws Exception {
+        given(advisorTools.names())
+                .willReturn(List.of("simulate_debt_payoff", "evaluate_goal", "project_savings"));
+
+        mockMvc.perform(get("/api/health"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("prompt=v4")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("tools=v1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("simulate_debt_payoff")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("evaluate_goal")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("project_savings")));
     }
 }
