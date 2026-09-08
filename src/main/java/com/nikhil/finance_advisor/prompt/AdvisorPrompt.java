@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class AdvisorPrompt {
 
-    public static final String PROMPT_VERSION = "v3";
+    public static final String PROMPT_VERSION = "v4";
 
     private static final String PROMPT_RESOURCE = "prompts/advisor-system-prompt." + PROMPT_VERSION + ".md";
     private static final String PICTURE_PLACEHOLDER = "{{financialPicture}}";

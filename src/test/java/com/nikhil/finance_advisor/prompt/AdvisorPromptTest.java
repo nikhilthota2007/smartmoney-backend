@@ -124,11 +124,38 @@ class AdvisorPromptTest {
     }
 
     @Test
-    void forbidsCompoundProjectionsTheContextDoesNotContain() {
+    void forbidsComputingCompoundProjectionsInProse() {
+        assertThat(buildWithData()).contains("You may NOT produce a compound projection yourself");
+    }
+
+    /** v4: the escape hatch moved from "say you cannot" to "call the tool". */
+    @Test
+    void sendsTheModelToTheToolsRatherThanHavingItDecline() {
         String result = buildWithData();
 
-        assertThat(result).contains("You may NOT produce a compound projection");
-        assertThat(result).contains("Debt Payoff Calculator");
+        assertThat(result).contains("CALL THE TOOL THAT COMPUTES IT");
+        assertThat(result).contains("Do not tell the user you are unable to work it");
+        assertThat(result).contains("A tool result is authoritative");
+    }
+
+    @Test
+    void describesEveryToolItCanCall() {
+        String result = buildWithData();
+
+        assertThat(result).contains("===== CALCULATIONS YOU CAN REQUEST =====");
+        assertThat(result).contains("simulate_debt_payoff");
+        assertThat(result).contains("evaluate_goal");
+        assertThat(result).contains("project_savings");
+    }
+
+    @Test
+    void requiresTheReturnAssumptionToBeRepeatedToTheUser() {
+        assertThat(buildWithData()).contains("must repeat that assumption in your answer");
+    }
+
+    @Test
+    void keepsTheToolMachineryOutOfTheUsersView() {
+        assertThat(buildWithData()).contains("Never describe the tools, their names or this section");
     }
 
     @Test
@@ -138,6 +165,6 @@ class AdvisorPromptTest {
 
     @Test
     void reportsItsVersion() {
-        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v3");
+        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v4");
     }
 }
