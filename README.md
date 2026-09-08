@@ -21,11 +21,17 @@ RESTful API backend for SmartMoney, an AI-powered financial advisory platform th
 GET /api/health
 ```
 
-Returns a plain-text liveness string (not JSON):
+Returns a plain-text liveness string (not JSON), naming what this instance is
+running:
 
 ```
-Financial Advisor API is running!
+Financial Advisor API is running! prompt=v4 tools=v1 [simulate_debt_payoff, evaluate_goal, project_savings]
 ```
+
+Use it to verify a deploy. If the tool names are absent, the instance is running
+an older build — which matters when checking whether the advisor calls tools,
+since "it answered in prose" would otherwise be ambiguous between a model that
+declined to call one and a build that has none to call.
 
 ### Chat Endpoint
 ```

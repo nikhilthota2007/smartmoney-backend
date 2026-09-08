@@ -2,7 +2,9 @@ package com.nikhil.finance_advisor.controller;
 
 import com.nikhil.finance_advisor.model.ChatRequest;
 import com.nikhil.finance_advisor.model.ChatResponse;
+import com.nikhil.finance_advisor.prompt.AdvisorPrompt;
 import com.nikhil.finance_advisor.service.AdvisorService;
+import com.nikhil.finance_advisor.service.AdvisorTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,9 +26,11 @@ public class FinancialAdvisorController {
             "The advisor is temporarily unavailable. Please try again in a moment.";
 
     private final AdvisorService advisorService;
+    private final AdvisorTools advisorTools;
 
-    public FinancialAdvisorController(AdvisorService advisorService) {
+    public FinancialAdvisorController(AdvisorService advisorService, AdvisorTools advisorTools) {
         this.advisorService = advisorService;
+        this.advisorTools = advisorTools;
     }
 
     @PostMapping("/chat")
@@ -49,8 +53,19 @@ public class FinancialAdvisorController {
         }
     }
 
+    /**
+     * Liveness, plus what this instance is actually running.
+     *
+     * The versions are here so a deploy can be verified in one request. Without
+     * them an answer that quotes no computed figures is ambiguous: it could be
+     * the model declining to call a tool, or an older build that has no tools to
+     * call. The tool names make that difference visible.
+     */
     @GetMapping("/health")
     public String health() {
-        return "Financial Advisor API is running!";
+        return "Financial Advisor API is running!"
+                + " prompt=" + AdvisorPrompt.PROMPT_VERSION
+                + " tools=" + AdvisorTools.TOOLS_VERSION
+                + " " + advisorTools.names();
     }
 }
