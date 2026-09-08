@@ -32,7 +32,13 @@ public class FinancialAdvisorController {
     @PostMapping("/chat")
     public ChatResponse chat(@RequestBody ChatRequest request) {
         try {
-            return new ChatResponse(advisorService.getChatResponse(request), true);
+            AdvisorService.AdvisorReply reply = advisorService.getChatResponse(request);
+            ChatResponse response = new ChatResponse(reply.content(), true);
+            if (reply.needsTools()) {
+                // The client runs these and posts again with the results.
+                response.setToolCalls(reply.toolCalls());
+            }
+            return response;
         } catch (Exception e) {
             // Exception messages can carry upstream URLs, keys and internal state,
             // so they are logged rather than returned to the browser.

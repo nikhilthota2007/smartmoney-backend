@@ -1,0 +1,65 @@
+{
+  "_comment": [
+    "Tool schemas declared to the model. These are DECLARATIONS ONLY — nothing here",
+    "executes on the server. The model's call requests are relayed to the client,",
+    "which runs them against its own financial logic and sends the results back.",
+    "Duplicating the money maths in Java would create a second implementation that",
+    "could disagree with the one the user sees on screen.",
+    "Tool names and parameters are covered by AdvisorToolsContractTest, which checks",
+    "them against the manifest the frontend publishes."
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "simulate_debt_payoff",
+        "description": "Recalculate the user's debt payoff at a different extra monthly payment. Use this whenever the user asks what would happen if they paid more or less toward their debts. Returns months to clear, total interest, and the saving compared with paying minimums only, for both the avalanche and snowball orders.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "extraPayment": {
+              "type": "number",
+              "description": "Extra dollars per month beyond the minimum payments, on top of the minimums."
+            }
+          },
+          "required": ["extraPayment"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "evaluate_goal",
+        "description": "Work out what a savings goal requires each month and whether the user's surplus covers it. Use this for any 'can I afford X by Y' question. Omit monthlySurplus and currentAmount to use the user's actual figures.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "goalName": { "type": "string", "description": "What the goal is for." },
+            "targetAmount": { "type": "number", "description": "Total dollars needed." },
+            "targetDate": { "type": "string", "description": "Target month as YYYY-MM. Omit if there is no deadline." },
+            "currentAmount": { "type": "number", "description": "Dollars already saved toward it. Defaults to 0." },
+            "monthlySurplus": { "type": "number", "description": "Dollars available each month. Defaults to the user's actual surplus." }
+          },
+          "required": ["targetAmount"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "project_savings",
+        "description": "Project a savings balance forward with compound growth. Use this instead of estimating growth yourself. The result includes the return assumption used, which you must state in your answer.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "initialAmount": { "type": "number", "description": "Starting balance. Defaults to the user's savings." },
+            "monthlyContribution": { "type": "number", "description": "Added each month. Defaults to the user's surplus." },
+            "months": { "type": "number", "description": "How many months to project. Required." },
+            "annualReturnPct": { "type": "number", "description": "Assumed average annual return. Defaults to 5." }
+          },
+          "required": ["months"]
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 package com.nikhil.finance_advisor.controller;
 
+import com.nikhil.finance_advisor.model.ToolCall;
 import com.nikhil.finance_advisor.service.AdvisorService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,6 +8,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -42,12 +45,60 @@ class FinancialAdvisorControllerTest {
 
     @Test
     void returnsTheAdvisorsReply() throws Exception {
-        given(advisorService.getChatResponse(any())).willReturn("Buy used, pay cash.");
+        given(advisorService.getChatResponse(any()))
+                .willReturn(new AdvisorService.AdvisorReply("Buy used, pay cash.", List.of()));
 
         mockMvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON).content(REQUEST_BODY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.response").value("Buy used, pay cash."));
+    }
+
+    @Test
+    void relaysToolCallsForTheClientToRun() throws Exception {
+        given(advisorService.getChatResponse(any())).willReturn(new AdvisorService.AdvisorReply(
+                null, List.of(new ToolCall("call_1", "simulate_debt_payoff", "{\"extraPayment\":500}"))));
+
+        mockMvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON).content(REQUEST_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.toolCalls[0].id").value("call_1"))
+                .andExpect(jsonPath("$.toolCalls[0].name").value("simulate_debt_payoff"))
+                .andExpect(jsonPath("$.toolCalls[0].arguments").value("{\"extraPayment\":500}"));
+    }
+
+    @Test
+    void omitsToolCallsFromAPlainAnswer() throws Exception {
+        given(advisorService.getChatResponse(any()))
+                .willReturn(new AdvisorService.AdvisorReply("Just an answer.", List.of()));
+
+        mockMvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON).content(REQUEST_BODY))
+                .andExpect(jsonPath("$.response").value("Just an answer."))
+                .andExpect(jsonPath("$.toolCalls").doesNotExist());
+    }
+
+    @Test
+    void acceptsAContinuationCarryingToolResults() throws Exception {
+        given(advisorService.getChatResponse(any()))
+                .willReturn(new AdvisorService.AdvisorReply("Here is what that means.", List.of()));
+
+        String continuation = """
+                {
+                  "message": null,
+                  "history": [
+                    { "role": "user", "content": "What if I paid $500 more?" },
+                    { "role": "assistant", "content": "",
+                      "toolCalls": [{ "id": "call_1", "name": "simulate_debt_payoff",
+                                      "arguments": "{\\"extraPayment\\":500}" }] },
+                    { "role": "tool", "toolCallId": "call_1", "content": "{\\"avalanche\\":{\\"months\\":30}}" }
+                  ]
+                }
+                """;
+
+        mockMvc.perform(post("/api/chat").contentType(MediaType.APPLICATION_JSON).content(continuation))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.response").value("Here is what that means."));
     }
 
     @Test

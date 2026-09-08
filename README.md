@@ -167,7 +167,7 @@ src/main/
 ## The system prompt
 
 The advisor's behaviour is defined in
-[`src/main/resources/prompts/advisor-system-prompt.v3.md`](src/main/resources/prompts/advisor-system-prompt.v3.md),
+[`src/main/resources/prompts/advisor-system-prompt.v4.md`](src/main/resources/prompts/advisor-system-prompt.v4.md),
 not in Java source, so it can be reviewed as a diff and rolled back on its own.
 `AdvisorPrompt` loads it at startup and `FinancialPictureRenderer` substitutes the
 computed financial picture into it.
@@ -209,10 +209,26 @@ frontend has the matching test.
 
 The backend integrates with Groq's API to process natural language queries and generate contextual financial advice. User financial data is included in prompts to ensure personalized and relevant responses.
 
-The model is grounded in the precomputed figures described above rather than
-doing its own arithmetic. Parameterized what-ifs ("what if I pay $500 extra?")
-still need real tool calls, which is the remaining Phase 2 work in the
-[frontend repository's plan](https://github.com/nikhilthota2007/smartmoney-frontend/blob/main/docs/PLAN.md).
+The model is grounded in the precomputed figures described above, and calls tools
+for anything parameterized. It does no arithmetic of its own.
+
+## Tools
+
+`src/main/resources/tools/advisor-tools.v1.json` declares the calculations the
+model may request: `simulate_debt_payoff`, `evaluate_goal` and `project_savings`.
+
+**Nothing executes here.** The model's call requests are relayed to the client in
+`ChatResponse.toolCalls`; the client runs them against the same financial logic
+its screen uses and posts again with the results as `role: "tool"` messages. A
+second implementation in Java could disagree with the one the user is looking at,
+which is the failure this design exists to prevent. The cost is one extra round
+trip per tool call.
+
+The loop is bounded by the client, since this service holds no state.
+`AdvisorToolsTest` checks the declared tools and parameters against the manifest
+the frontend publishes, so a tool declared here but unimplemented there — or a
+parameter renamed on one side — fails the build rather than producing an answer
+built on a silently ignored argument.
 
 ## Related Repositories
 

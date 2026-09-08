@@ -1,0 +1,29 @@
+{
+  "tools": [
+    {
+      "name": "simulate_debt_payoff",
+      "parameters": [
+        "extraPayment"
+      ]
+    },
+    {
+      "name": "evaluate_goal",
+      "parameters": [
+        "goalName",
+        "targetAmount",
+        "targetDate",
+        "currentAmount",
+        "monthlySurplus"
+      ]
+    },
+    {
+      "name": "project_savings",
+      "parameters": [
+        "initialAmount",
+        "monthlyContribution",
+        "months",
+        "annualReturnPct"
+      ]
+    }
+  ]
+}
