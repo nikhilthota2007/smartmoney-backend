@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.client.RestClientResponseException;
 
 @RestController
 @RequestMapping("/api")
@@ -43,14 +44,25 @@ public class FinancialAdvisorController {
                 response.setToolCalls(reply.toolCalls());
             }
             return response;
+        } catch (RestClientResponseException e) {
+            // Groq rejected the call. Its body says why — a decommissioned model,
+            // a bad key, a rate limit — and that distinction is invisible from the
+            // browser, which sees the same generic error for all of them.
+            log.error("Groq rejected the request: status={} body={}",
+                    e.getStatusCode(), e.getResponseBodyAsString(), e);
+            return failure();
         } catch (Exception e) {
             // Exception messages can carry upstream URLs, keys and internal state,
             // so they are logged rather than returned to the browser.
             log.error("Chat request failed", e);
-            ChatResponse errorResponse = new ChatResponse(null, false);
-            errorResponse.setError(GENERIC_ERROR);
-            return errorResponse;
+            return failure();
         }
+    }
+
+    private static ChatResponse failure() {
+        ChatResponse errorResponse = new ChatResponse(null, false);
+        errorResponse.setError(GENERIC_ERROR);
+        return errorResponse;
     }
 
     /**
@@ -60,10 +72,14 @@ public class FinancialAdvisorController {
      * them an answer that quotes no computed figures is ambiguous: it could be
      * the model declining to call a tool, or an older build that has no tools to
      * call. The tool names make that difference visible.
+     *
+     * The model name is here for the same reason: Groq retires models, and the
+     * only symptom of calling a retired one is the generic chat error.
      */
     @GetMapping("/health")
     public String health() {
         return "Financial Advisor API is running!"
+                + " model=" + advisorService.modelName()
                 + " prompt=" + AdvisorPrompt.PROMPT_VERSION
                 + " tools=" + AdvisorTools.TOOLS_VERSION
                 + " " + advisorTools.names();

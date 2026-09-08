@@ -42,7 +42,7 @@ class AdvisorServiceTest {
         AdvisorTools tools = new AdvisorTools(new ObjectMapper());
         AdvisorPrompt prompt = new AdvisorPrompt(new FinancialPictureRenderer());
         service = new AdvisorService(restTemplate, prompt, tools, "test-key",
-                "llama-3.3-70b-versatile", 0.7, 1000);
+                "openai/gpt-oss-120b", 0.7, 1000);
     }
 
     private void groqReturns(Map<String, Object> message) {
@@ -79,7 +79,7 @@ class AdvisorServiceTest {
         Map<String, Object> body = capturedBody();
         assertThat(body.get("tools")).asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.LIST).isNotEmpty();
         assertThat(body.get("tool_choice")).isEqualTo("auto");
-        assertThat(body.get("model")).isEqualTo("llama-3.3-70b-versatile");
+        assertThat(body.get("model")).isEqualTo("openai/gpt-oss-120b");
     }
 
     @Test

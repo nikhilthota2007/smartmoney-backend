@@ -2,6 +2,16 @@
 
 RESTful API backend for SmartMoney, an AI-powered financial advisory platform that provides personalized financial guidance and budgeting recommendations.
 
+> **The deployed site no longer calls this service.** The same API now ships as
+> Node serverless functions in the frontend repository (`api/`), so a Vercel
+> deployment is self-contained. This service still builds, runs and is tested,
+> and remains the reference implementation.
+>
+> The prompt in `src/main/resources/prompts/` and the tool schemas in
+> `src/main/resources/tools/` are duplicated verbatim in the frontend's
+> `api/_lib/`. **Change them in both places**, or the two will disagree about
+> what the advisor is told.
+
 ## Live API
 
 **Base URL:** `https://smartmoney-backend-production-0674.up.railway.app`
@@ -11,7 +21,7 @@ RESTful API backend for SmartMoney, an AI-powered financial advisory platform th
 - **Framework:** Spring Boot 4.0.1
 - **Language:** Java 21 (compiled at source level 17)
 - **Build Tool:** Maven
-- **AI Integration:** Groq API (LLaMA model)
+- **AI Integration:** Groq API (OpenAI-compatible chat completions)
 - **Hosting:** Railway
 
 ## API Endpoints
@@ -25,13 +35,19 @@ Returns a plain-text liveness string (not JSON), naming what this instance is
 running:
 
 ```
-Financial Advisor API is running! prompt=v4 tools=v1 [simulate_debt_payoff, evaluate_goal, project_savings]
+Financial Advisor API is running! model=openai/gpt-oss-120b prompt=v4 tools=v1 [simulate_debt_payoff, evaluate_goal, project_savings]
 ```
 
 Use it to verify a deploy. If the tool names are absent, the instance is running
 an older build — which matters when checking whether the advisor calls tools,
 since "it answered in prose" would otherwise be ambiguous between a model that
 declined to call one and a build that has none to call.
+
+`model=` is there for the same reason. Groq retires model names, and a retired
+one fails every request with a 404 that the browser only ever sees as the
+generic "temporarily unavailable" error. Check this line first when the chat
+stops working, and the logs second — a rejected call records the status and body
+Groq returned. `GROQ_MODEL` changes the model without a code change.
 
 ### Chat Endpoint
 ```
@@ -124,7 +140,7 @@ The API will be available at `http://localhost:8080`
 |----------|-------------|----------|---------|
 | `GROQ_API_KEY` | API key for Groq AI service | Yes | - |
 | `FRONTEND_URL` | Frontend application URL for CORS | No | `http://localhost:3000` |
-| `GROQ_MODEL` | Groq model id | No | `llama-3.3-70b-versatile` |
+| `GROQ_MODEL` | Groq model id | No | `openai/gpt-oss-120b` |
 | `PORT` | Server port | No | `8080` |
 
 `GROQ_API_KEY` has no default on purpose: the application fails to start without
@@ -139,7 +155,7 @@ spring.application.name=finance-advisor
 groq.api.key=${GROQ_API_KEY}
 cors.allowed.origins=${FRONTEND_URL:http://localhost:3000}
 
-groq.api.model=${GROQ_MODEL:llama-3.3-70b-versatile}
+groq.api.model=${GROQ_MODEL:openai/gpt-oss-120b}
 groq.api.temperature=0.7
 groq.api.max-tokens=1000
 groq.api.connect-timeout-seconds=10

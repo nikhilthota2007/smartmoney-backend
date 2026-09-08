@@ -141,8 +141,10 @@ class FinancialAdvisorControllerTest {
     void healthEndpointNamesTheVersionsAndToolsThisBuildCarries() throws Exception {
         given(advisorTools.names())
                 .willReturn(List.of("simulate_debt_payoff", "evaluate_goal", "project_savings"));
+        given(advisorService.modelName()).willReturn("openai/gpt-oss-120b");
 
         mockMvc.perform(get("/api/health"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("model=openai/gpt-oss-120b")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("prompt=v4")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("tools=v1")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("simulate_debt_payoff")))
