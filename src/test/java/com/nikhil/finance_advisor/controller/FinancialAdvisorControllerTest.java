@@ -145,7 +145,7 @@ class FinancialAdvisorControllerTest {
 
         mockMvc.perform(get("/api/health"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("model=openai/gpt-oss-120b")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("prompt=v4")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("prompt=v5")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("tools=v1")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("simulate_debt_payoff")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("evaluate_goal")))
