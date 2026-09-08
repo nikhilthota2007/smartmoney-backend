@@ -30,14 +30,14 @@
       "type": "function",
       "function": {
         "name": "evaluate_goal",
-        "description": "Work out what a savings goal requires each month and whether the user's surplus covers it. Use this for any 'can I afford X by Y' question. Omit monthlySurplus and currentAmount to use the user's actual figures.",
+        "description": "Work out what a savings goal requires each month and whether the user's surplus covers it. Use this for any 'can I afford X by Y' question, and for any 'how long until I have X' question including building an emergency fund. Omit monthlySurplus to use the user's actual surplus, but DO pass currentAmount whenever they already have savings that count toward the goal.",
         "parameters": {
           "type": "object",
           "properties": {
             "goalName": { "type": "string", "description": "What the goal is for." },
             "targetAmount": { "type": "number", "description": "Total dollars needed." },
             "targetDate": { "type": "string", "description": "Target month as YYYY-MM. Omit if there is no deadline." },
-            "currentAmount": { "type": "number", "description": "Dollars already saved toward it. Defaults to 0." },
+            "currentAmount": { "type": "number", "description": "Dollars already saved toward it. ALWAYS pass this when the user already has savings that count toward the goal — for an emergency-fund goal that is their reachable savings. It defaults to 0, which overstates the time required for anyone who has already saved something." },
             "monthlySurplus": { "type": "number", "description": "Dollars available each month. Defaults to the user's actual surplus." }
           },
           "required": ["targetAmount"]

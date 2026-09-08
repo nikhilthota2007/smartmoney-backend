@@ -125,7 +125,7 @@ class AdvisorPromptTest {
 
     @Test
     void forbidsComputingCompoundProjectionsInProse() {
-        assertThat(buildWithData()).contains("You may NOT produce a compound projection yourself");
+        assertThat(buildWithData()).contains("You may NOT work any of these out yourself");
     }
 
     /** v4: the escape hatch moved from "say you cannot" to "call the tool". */
@@ -155,7 +155,7 @@ class AdvisorPromptTest {
 
     @Test
     void keepsTheToolMachineryOutOfTheUsersView() {
-        assertThat(buildWithData()).contains("Never describe the tools, their names or this section");
+        assertThat(buildWithData()).contains("They are how you work, not");
     }
 
     @Test
@@ -163,8 +163,47 @@ class AdvisorPromptTest {
         assertThat(buildWithData()).contains("Anything listed under STILL MISSING");
     }
 
+    /**
+     * v5. A live run against Groq produced both of these failures in one answer:
+     * a fabricated "roughly 2 months" for a gap that really takes 10 to 13, and
+     * "The tool can recalculate that" said straight to the user.
+     */
+    @Test
+    void forbidsWorkingOutATimelineInProse() {
+        String result = buildWithData();
+
+        assertThat(result).contains("HOW LONG until a target is reached");
+        assertThat(result).contains("how much is needed each month to reach a target by a date");
+        assertThat(result).contains("is a timeline");
+    }
+
+    @Test
+    void narrowsWhatCountsAsSimpleArithmetic() {
+        String result = buildWithData();
+
+        assertThat(result).contains("SINGLE step you can show in");
+        assertThat(result).contains("this licence does not cover it");
+    }
+
+    @Test
+    void sendsEmergencyFundTimelinesToEvaluateGoal() {
+        String result = buildWithData();
+
+        assertThat(result).contains("An emergency-fund target is a goal like any other");
+        assertThat(result).contains("how long until I have");
+    }
+
+    @Test
+    void forbidsReferringToTheToolsAtAll() {
+        String result = buildWithData();
+
+        assertThat(result).contains("NEVER REFER TO THESE TOOLS IN YOUR ANSWER");
+        assertThat(result).contains("\"the tool\"");
+        assertThat(result).contains("tell me another amount and I will work");
+    }
+
     @Test
     void reportsItsVersion() {
-        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v4");
+        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v5");
     }
 }
