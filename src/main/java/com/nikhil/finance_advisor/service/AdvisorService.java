@@ -46,7 +46,7 @@ public class AdvisorService {
             AdvisorPrompt advisorPrompt,
             AdvisorTools advisorTools,
             @Value("${groq.api.key}") String apiKey,
-            @Value("${groq.api.model:llama-3.3-70b-versatile}") String model,
+            @Value("${groq.api.model:openai/gpt-oss-120b}") String model,
             @Value("${groq.api.temperature:0.7}") double temperature,
             @Value("${groq.api.max-tokens:1000}") int maxTokens) {
         this.restTemplate = groqRestTemplate;
@@ -56,6 +56,17 @@ public class AdvisorService {
         this.model = model;
         this.temperature = temperature;
         this.maxTokens = maxTokens;
+    }
+
+    /**
+     * The model this instance will call.
+     *
+     * Reported by /api/health because a model name that Groq no longer serves is
+     * indistinguishable, from the browser, from any other upstream failure: both
+     * arrive as the same generic error. Naming it makes that case checkable.
+     */
+    public String modelName() {
+        return model;
     }
 
     /** Either the assistant's text, or the calculations it wants run. */
