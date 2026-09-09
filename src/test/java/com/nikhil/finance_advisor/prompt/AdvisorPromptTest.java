@@ -204,6 +204,6 @@ class AdvisorPromptTest {
 
     @Test
     void reportsItsVersion() {
-        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v5");
+        assertThat(AdvisorPrompt.PROMPT_VERSION).isEqualTo("v6");
     }
 }

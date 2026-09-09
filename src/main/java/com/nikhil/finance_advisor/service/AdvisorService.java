@@ -48,7 +48,7 @@ public class AdvisorService {
             @Value("${groq.api.key}") String apiKey,
             @Value("${groq.api.model:openai/gpt-oss-120b}") String model,
             @Value("${groq.api.temperature:0.7}") double temperature,
-            @Value("${groq.api.max-tokens:1000}") int maxTokens) {
+            @Value("${groq.api.max-tokens:3000}") int maxTokens) {
         this.restTemplate = groqRestTemplate;
         this.advisorPrompt = advisorPrompt;
         this.advisorTools = advisorTools;
