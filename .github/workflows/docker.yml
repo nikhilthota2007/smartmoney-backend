@@ -1,0 +1,60 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      IMAGE: smartmoney-backend:ci
+    steps:
+      # Third-party actions are pinned to full commit SHAs, not movable tags
+      - name: Check out code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      # The Dockerfile's build stage runs "mvn package", so the test suite runs
+      # inside the build container and a failing test fails this step.
+      - name: Build image (runs the test suite)
+        run: docker build --progress=plain -t "$IMAGE" .
+
+      # GROQ_API_KEY only needs a value for the app to start; nothing here calls Groq.
+      - name: Start container and wait until healthy
+        run: |
+          docker run -d --name app -p 8080:8080 -e GROQ_API_KEY=ci-placeholder "$IMAGE"
+          for i in $(seq 1 45); do
+            state=$(docker inspect -f '{{.State.Status}}' app)
+            health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' app)
+            echo "attempt $i: state=$state health=$health"
+            if [ "$health" = healthy ]; then
+              docker ps --filter name=app
+              curl -fsS http://localhost:8080/actuator/health
+              echo
+              exit 0
+            fi
+            if [ "$health" = unhealthy ] || [ "$state" != running ]; then
+              break
+            fi
+            sleep 2
+          done
+          echo "::error::Container did not become healthy"
+          docker logs app
+          exit 1
+
+      # v0.36.0 was published after the March 2026 trivy-action tag compromise;
+      # it pins setup-trivy by SHA and installs the Trivy version below.
+      # ignore-unfixed stays at its default (false), so unfixed CRITICALs fail too.
+      - name: Scan image with Trivy (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          version: v0.70.0
+          severity: CRITICAL
+          exit-code: '1'
