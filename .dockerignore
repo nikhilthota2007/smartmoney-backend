@@ -1,0 +1,5 @@
+# Allow-list: the image build only needs pom.xml and src/, so nothing else
+# (.git, target/, IDE files, local env files) is sent to the Docker daemon.
+*
+!pom.xml
+!src
