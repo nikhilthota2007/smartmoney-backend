@@ -95,6 +95,27 @@ mvn spring-boot:run
 
 The API will be available at `http://localhost:8080`
 
+## Running with Docker
+
+The multi-stage `Dockerfile` runs the test suite during the build (a failing test fails the build), then packages the app into a slim JRE 21 Alpine image that runs as a non-root user.
+
+```bash
+docker build -t smartmoney-backend .
+docker run -d --name smartmoney-backend -p 8080:8080 \
+  -e GROQ_API_KEY=your_groq_api_key_here \
+  -e FRONTEND_URL=http://localhost:3000 \
+  smartmoney-backend
+```
+
+`GROQ_API_KEY` is required at runtime; the app will not start without it. The image's `HEALTHCHECK` polls `/actuator/health`, the only Actuator endpoint exposed:
+
+```bash
+docker ps                                    # STATUS shows "(healthy)" once the app is up
+curl http://localhost:8080/actuator/health   # {"status":"UP"}
+```
+
+CI (`.github/workflows/docker.yml`) builds the image on every push and pull request to `main`, waits for the container to report healthy, and scans the image with Trivy, failing on any CRITICAL vulnerability.
+
 ## Configuration
 
 ### Environment Variables
