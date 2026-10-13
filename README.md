@@ -2,9 +2,11 @@
 
 RESTful API backend for SmartMoney, an AI-powered financial advisory platform that provides personalized financial guidance and budgeting recommendations.
 
-## Live API
+## Live Demo
 
-**Base URL:** `https://smartmoney-backend-production-0674.up.railway.app`
+**[View the SmartMoney app](https://smartmoney-frontend.vercel.app)**
+
+The hosted app serves its advisor from the frontend deployment. To try this API directly, run it locally or with Docker (see [Local Development](#local-development) and [Running with Docker](#running-with-docker)).
 
 ## Technology Stack
 
@@ -12,7 +14,7 @@ RESTful API backend for SmartMoney, an AI-powered financial advisory platform th
 - **Language:** Java 21
 - **Build Tool:** Maven
 - **AI Integration:** Groq API (LLaMA model)
-- **Hosting:** Railway
+- **Deployment:** Docker
 
 ## API Endpoints
 
